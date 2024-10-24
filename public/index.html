@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <!-- Link ke Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Arial', sans-serif;
+        }
+        .chat-container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .messages {
+            list-style-type: none;
+            padding: 0;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        .message {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .username {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .delete {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            border: none;
+            background: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .input-group {
+            margin-top: 10px;
+        }
+        input[type="text"] {
+            border-radius: 20px;
+            padding: 10px;
+            border: 1px solid #ced4da;
+        }
+        button {
+            border-radius: 20px;
+            background-color: #007bff;
+            color: white;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h2 class="text-center">Chat App</h2>
+        <div>
+            <strong>Users Online:</strong>
+            <ul id="online-users" class="list-group mb-3"></ul>
+        </div>
+        <input id="username" class="form-control" placeholder="Enter your name" />
+        <ul id="messages" class="messages"></ul>
+        <div class="form-group">
+            <input id="search" class="form-control" placeholder="Search messages..." />
+        </div>
+        <div class="input-group">
+            <button id="emoji-btn" class="btn btn-light">😀</button>
+            <input id="m" class="form-control" autocomplete="off" placeholder="Type a message..." />
+            <div class="input-group-append">
+                <button class="btn btn-primary">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="notification-sound" src="notification.mp3" preload="auto"></audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@latest/dist/index.min.js"></script>
+    <script>
+        const socket = io();
+        const usernameInput = document.getElementById('username');
+        const input = document.getElementById('m');
+
+        // Emoji Picker
+        const picker = new EmojiButton();
+        document.querySelector('#emoji-btn').addEventListener('click', () => {
+            picker.togglePicker(document.querySelector('#emoji-btn'));
+        });
+
+        picker.on('emoji', emoji => {
+            input.value += emoji;
+        });
+
+        usernameInput.addEventListener('change', () => {
+            socket.emit('register', usernameInput.value);
+        });
+
+        document.querySelector('button.btn-primary').onclick = () => {
+            if (input.value && usernameInput.value) {
+                socket.emit('chat message', { user: usernameInput.value, message: input.value });
+                input.value = '';
+            }
+        };
+
+        socket.on('chat message', (data) => {
+            const item = document.createElement('li');
+            item.classList.add('message');
+            item.innerHTML = `<span class="username">${data.user}:</span> ${data.message} <small>${data.time}</small> <button class="delete">Delete</button>`;
+            document.getElementById('messages').appendChild(item);
+            document.getElementById('notification-sound').play();
+
+            item.querySelector('.delete').onclick = () => {
+                item.remove();
+            };
+        });
+
+        socket.on('update users', (usernames) => {
+            const onlineUsersList = document.getElementById('online-users');
+            onlineUsersList.innerHTML = '';
+            usernames.forEach(username => {
+                const li = document.createElement('li');
+                li.classList.add('list-group-item');
+                li.textContent = username;
+                onlineUsersList.appendChild(li);
+            });
+        });
+
+        document.getElementById('search').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const messages = document.querySelectorAll('.message');
+            messages.forEach(message => {
+                const text = message.textContent.toLowerCase();
+                message.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+    </script>
+</body>
+</html>
