@@ -104,6 +104,7 @@
             input.value += emoji;
         });
 
+        // Input Username
         usernameInput.addEventListener('change', () => {
             socket.emit('register', usernameInput.value);
         });
